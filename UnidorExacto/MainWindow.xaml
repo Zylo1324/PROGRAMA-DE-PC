@@ -6,18 +6,27 @@
         Height="560"
         MinWidth="760"
         MinHeight="480"
-        Background="#F6F7F9"
         FontFamily="Segoe UI">
+    <Window.Background>
+        <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+            <GradientStop Color="#F6F7F9" Offset="0" />
+            <GradientStop Color="#E9ECF2" Offset="1" />
+        </LinearGradientBrush>
+    </Window.Background>
     <Window.Resources>
         <Style TargetType="Button">
-            <Setter Property="Height" Value="40" />
-            <Setter Property="Padding" Value="16,0" />
+            <Setter Property="Height" Value="44" />
+            <Setter Property="MinWidth" Value="150" />
+            <Setter Property="Padding" Value="16,0,16,0" />
             <Setter Property="Background" Value="White" />
             <Setter Property="BorderBrush" Value="#D7D9DD" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="FontSize" Value="14" />
+            <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="Foreground" Value="#1B1B1B" />
-            <Setter Property="HorizontalAlignment" Value="Left" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
@@ -46,9 +55,9 @@
         </Style>
 
         <Style x:Key="PrimaryButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-            <Setter Property="Background" Value="#F2F3F5" />
-            <Setter Property="BorderBrush" Value="#C8CBD1" />
-            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Background" Value="#EDEFF3" />
+            <Setter Property="BorderBrush" Value="#B8BDC7" />
+            <Setter Property="BorderThickness" Value="1.5" />
         </Style>
 
         <Style TargetType="ListBox">
@@ -93,8 +102,9 @@
     <Grid Margin="32">
         <Border Background="White"
                 CornerRadius="18"
-                Padding="20"
-                MaxWidth="760"
+                Width="560"
+                MinHeight="360"
+                Padding="26"
                 HorizontalAlignment="Center"
                 VerticalAlignment="Center">
             <Border.Effect>
@@ -110,20 +120,20 @@
                     <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
 
-                <StackPanel Grid.Row="0" Margin="0,0,0,16">
-                    <TextBlock Text="UnidorExacto"
+                <StackPanel Grid.Row="0" Margin="0,0,0,18">
+                    <TextBlock Text="Unidor Extractor"
                                FontSize="26"
                                FontWeight="SemiBold"
                                Foreground="#111111" />
-                    <TextBlock Text="Une archivos grandes sin alterar números"
+                    <TextBlock Text="Unir .txt sin modificar números"
                                FontSize="14"
                                Foreground="#666666"
                                Margin="0,6,0,0" />
                 </StackPanel>
 
-                <StackPanel Grid.Row="1"
-                            Orientation="Horizontal"
-                            Margin="0,0,0,16">
+                <UniformGrid Grid.Row="1"
+                             Columns="3"
+                             Margin="0,0,0,18">
                     <Button Content="Agregar archivos"
                             Margin="0,0,12,0"
                             Click="AddFiles_Click" />
@@ -133,7 +143,7 @@
                     <Button Content="Unir y guardar"
                             Style="{StaticResource PrimaryButton}"
                             Click="MergeAndSave_Click" />
-                </StackPanel>
+                </UniformGrid>
 
                 <Border Grid.Row="2"
                         Background="#FAFAFA"
@@ -141,6 +151,8 @@
                         BorderThickness="1"
                         CornerRadius="12"
                         Padding="10"
+                        Height="170"
+                        MinHeight="170"
                         ClipToBounds="True">
                     <ListBox ItemsSource="{Binding SelectedFiles}" />
                 </Border>
