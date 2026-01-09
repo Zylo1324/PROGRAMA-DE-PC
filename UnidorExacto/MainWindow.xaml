@@ -7,18 +7,49 @@
         Width="700">
     <Window.Resources>
         <Style x:Key="RoundedButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="#F2F2F2" />
+            <Setter Property="BorderBrush" Value="#D0D0D0" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Foreground" Value="#202020" />
             <Setter Property="HorizontalContentAlignment" Value="Center" />
             <Setter Property="VerticalContentAlignment" Value="Center" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border Background="{TemplateBinding Background}"
+                        <Border x:Name="ButtonBorder"
+                                Background="{TemplateBinding Background}"
                                 BorderBrush="{TemplateBinding BorderBrush}"
                                 BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="16">
+                                CornerRadius="16"
+                                RenderTransformOrigin="0.5,0.5">
+                            <Border.RenderTransform>
+                                <TranslateTransform x:Name="PressTransform" />
+                            </Border.RenderTransform>
+                            <Border.Effect>
+                                <DropShadowEffect x:Name="ShadowEffect"
+                                                  BlurRadius="12"
+                                                  ShadowDepth="3"
+                                                  Opacity="0.28"
+                                                  Color="#000000" />
+                            </Border.Effect>
                             <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
                                               VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
                         </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ButtonBorder" Property="Background" Value="#F8F8F8" />
+                                <Setter TargetName="ButtonBorder" Property="BorderBrush" Value="#C4C4C4" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="PressTransform" Property="Y" Value="2" />
+                                <Setter TargetName="ShadowEffect" Property="Opacity" Value="0.18" />
+                                <Setter TargetName="ShadowEffect" Property="ShadowDepth" Value="1" />
+                                <Setter TargetName="ButtonBorder" Property="Background" Value="#EAEAEA" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="ButtonBorder" Property="Opacity" Value="0.6" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
@@ -35,16 +66,19 @@
                 Content="Agregar archivos"
                 Width="160"
                 Margin="0,0,0,8"
+                Padding="12,8"
                 HorizontalAlignment="Left"
                 Click="AddFiles_Click"
                 Style="{StaticResource RoundedButtonStyle}" />
 
         <Border Grid.Row="1"
-                CornerRadius="20"
+                CornerRadius="22"
                 BorderThickness="1"
-                BorderBrush="{DynamicResource {x:Static sys:SystemColors.ControlDarkBrushKey}}">
+                BorderBrush="{DynamicResource {x:Static sys:SystemColors.ControlDarkBrushKey}}"
+                ClipToBounds="True">
             <ListBox ItemsSource="{Binding SelectedFiles}"
-                     BorderThickness="0" />
+                     BorderThickness="0"
+                     Background="Transparent" />
         </Border>
 
         <StackPanel Grid.Row="2"
