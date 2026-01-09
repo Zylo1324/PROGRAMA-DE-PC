@@ -49,7 +49,9 @@ public partial class MainWindow : Window
         {
             Title = "Guardar archivo unido",
             FileName = "unido.txt",
-            Filter = "Todos los archivos (*.*)|*.*"
+            DefaultExt = ".txt",
+            AddExtension = true,
+            Filter = "Archivo de texto (*.txt)|*.txt|Todos los archivos (*.*)|*.*"
         };
 
         if (saveDialog.ShowDialog() != true)
