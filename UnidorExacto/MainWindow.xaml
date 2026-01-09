@@ -19,11 +19,17 @@
         <ListBox Grid.Row="1"
                  ItemsSource="{Binding SelectedFiles}" />
 
-        <Button Grid.Row="2"
-                Content="Unir y guardar"
-                Width="160"
-                Margin="0,8,0,0"
-                HorizontalAlignment="Left"
-                Click="MergeAndSave_Click" />
+        <StackPanel Grid.Row="2"
+                    Orientation="Horizontal"
+                    Margin="0,8,0,0"
+                    HorizontalAlignment="Left">
+            <Button Content="Unir y guardar"
+                    Width="160"
+                    Margin="0,0,8,0"
+                    Click="MergeAndSave_Click" />
+            <Button Content="Limpiar lista"
+                    Width="160"
+                    Click="ClearFiles_Click" />
+        </StackPanel>
     </Grid>
 </Window>

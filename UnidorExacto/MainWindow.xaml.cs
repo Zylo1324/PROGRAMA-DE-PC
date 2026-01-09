@@ -62,12 +62,18 @@ public partial class MainWindow : Window
             MergeFiles(saveDialog.FileName, SelectedFiles);
             MessageBox.Show("Archivos unidos correctamente.", "UnidorExacto",
                 MessageBoxButton.OK, MessageBoxImage.Information);
+            SelectedFiles.Clear();
         }
         catch (IOException ex)
         {
             MessageBox.Show($"Error al unir archivos: {ex.Message}", "UnidorExacto",
                 MessageBoxButton.OK, MessageBoxImage.Error);
         }
+    }
+
+    private void ClearFiles_Click(object sender, RoutedEventArgs e)
+    {
+        SelectedFiles.Clear();
     }
 
     private static void MergeFiles(string destinationPath, IReadOnlyList<string> files)
