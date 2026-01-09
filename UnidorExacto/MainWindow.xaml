@@ -1,0 +1,29 @@
+<Window x:Class="UnidorExacto.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="UnidorExacto" Height="450" Width="700">
+    <Grid Margin="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <Button Grid.Row="0"
+                Content="Agregar archivos"
+                Width="160"
+                Margin="0,0,0,8"
+                HorizontalAlignment="Left"
+                Click="AddFiles_Click" />
+
+        <ListBox Grid.Row="1"
+                 ItemsSource="{Binding SelectedFiles}" />
+
+        <Button Grid.Row="2"
+                Content="Unir y guardar"
+                Width="160"
+                Margin="0,8,0,0"
+                HorizontalAlignment="Left"
+                Click="MergeAndSave_Click" />
+    </Grid>
+</Window>
