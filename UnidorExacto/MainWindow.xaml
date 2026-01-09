@@ -24,7 +24,7 @@
                                 CornerRadius="16"
                                 RenderTransformOrigin="0.5,0.5">
                             <Border.RenderTransform>
-                                <TranslateTransform x:Name="PressTransform" />
+                                <TranslateTransform />
                             </Border.RenderTransform>
                             <Border.Effect>
                                 <DropShadowEffect x:Name="ShadowEffect"
@@ -42,7 +42,7 @@
                                 <Setter TargetName="ButtonBorder" Property="BorderBrush" Value="#C4C4C4" />
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="PressTransform" Property="Y" Value="2" />
+                                <Setter TargetName="ButtonBorder" Property="RenderTransform.(TranslateTransform.Y)" Value="2" />
                                 <Setter TargetName="ShadowEffect" Property="Opacity" Value="0.18" />
                                 <Setter TargetName="ShadowEffect" Property="ShadowDepth" Value="1" />
                                 <Setter TargetName="ButtonBorder" Property="Background" Value="#EAEAEA" />
