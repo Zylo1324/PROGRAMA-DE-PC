@@ -1,35 +1,150 @@
 <Window x:Class="UnidorExacto.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="UnidorExacto" Height="450" Width="700">
-    <Grid Margin="12">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-            <RowDefinition Height="Auto" />
-        </Grid.RowDefinitions>
+        Title="UnidorExacto"
+        Width="900"
+        Height="560"
+        MinWidth="760"
+        MinHeight="480"
+        Background="#F6F7F9"
+        FontFamily="Segoe UI">
+    <Window.Resources>
+        <Style TargetType="Button">
+            <Setter Property="Height" Value="40" />
+            <Setter Property="Padding" Value="16,0" />
+            <Setter Property="Background" Value="White" />
+            <Setter Property="BorderBrush" Value="#D7D9DD" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="Foreground" Value="#1B1B1B" />
+            <Setter Property="HorizontalAlignment" Value="Left" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="ButtonBorder"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="12">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ButtonBorder" Property="Background" Value="#F0F1F3" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="ButtonBorder" Property="Background" Value="#E7E9EC" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="ButtonBorder" Property="Opacity" Value="0.6" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
 
-        <Button Grid.Row="0"
-                Content="Agregar archivos"
-                Width="160"
-                Margin="0,0,0,8"
-                HorizontalAlignment="Left"
-                Click="AddFiles_Click" />
+        <Style x:Key="PrimaryButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Background" Value="#F2F3F5" />
+            <Setter Property="BorderBrush" Value="#C8CBD1" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
 
-        <ListBox Grid.Row="1"
-                 ItemsSource="{Binding SelectedFiles}" />
+        <Style TargetType="ListBox">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto" />
+        </Style>
 
-        <StackPanel Grid.Row="2"
-                    Orientation="Horizontal"
-                    Margin="0,8,0,0"
-                    HorizontalAlignment="Left">
-            <Button Content="Unir y guardar"
-                    Width="160"
-                    Margin="0,0,8,0"
-                    Click="MergeAndSave_Click" />
-            <Button Content="Limpiar lista"
-                    Width="160"
-                    Click="ClearFiles_Click" />
-        </StackPanel>
+        <Style TargetType="ListBoxItem">
+            <Setter Property="Padding" Value="12,8" />
+            <Setter Property="Margin" Value="0,4" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                        <Border x:Name="ItemBorder"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="10">
+                            <ContentPresenter VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ItemBorder" Property="Background" Value="#F0F1F3" />
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="ItemBorder" Property="Background" Value="#E7E9EC" />
+                                <Setter TargetName="ItemBorder" Property="BorderBrush" Value="#D7D9DD" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="32">
+        <Border Background="White"
+                CornerRadius="18"
+                Padding="20"
+                MaxWidth="760"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center">
+            <Border.Effect>
+                <DropShadowEffect BlurRadius="20"
+                                  Opacity="0.12"
+                                  ShadowDepth="2"
+                                  Color="#000000" />
+            </Border.Effect>
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <StackPanel Grid.Row="0" Margin="0,0,0,16">
+                    <TextBlock Text="UnidorExacto"
+                               FontSize="26"
+                               FontWeight="SemiBold"
+                               Foreground="#111111" />
+                    <TextBlock Text="Une archivos grandes sin alterar números"
+                               FontSize="14"
+                               Foreground="#666666"
+                               Margin="0,6,0,0" />
+                </StackPanel>
+
+                <StackPanel Grid.Row="1"
+                            Orientation="Horizontal"
+                            Margin="0,0,0,16">
+                    <Button Content="Agregar archivos"
+                            Margin="0,0,12,0"
+                            Click="AddFiles_Click" />
+                    <Button Content="Limpiar lista"
+                            Margin="0,0,12,0"
+                            Click="ClearFiles_Click" />
+                    <Button Content="Unir y guardar"
+                            Style="{StaticResource PrimaryButton}"
+                            Click="MergeAndSave_Click" />
+                </StackPanel>
+
+                <Border Grid.Row="2"
+                        Background="#FAFAFA"
+                        BorderBrush="#E3E5E8"
+                        BorderThickness="1"
+                        CornerRadius="12"
+                        Padding="10"
+                        ClipToBounds="True">
+                    <ListBox ItemsSource="{Binding SelectedFiles}" />
+                </Border>
+            </Grid>
+        </Border>
     </Grid>
 </Window>
