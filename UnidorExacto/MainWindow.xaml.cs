@@ -4,6 +4,8 @@ using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
 using Microsoft.Win32;
 
@@ -24,6 +26,9 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private AdvancedFilterMode _advancedMode = AdvancedFilterMode.Filter;
     private bool _ignoreCase = true;
     private string _keywordInput = string.Empty;
+    private bool _isBusy;
+    private string _statusMessage = string.Empty;
+    private CancellationTokenSource? _cancellationTokenSource;
 
     public bool AdvancedEnabled
     {
@@ -85,6 +90,39 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         }
     }
 
+    public bool IsBusy
+    {
+        get => _isBusy;
+        set
+        {
+            if (_isBusy == value)
+            {
+                return;
+            }
+
+            _isBusy = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(IsNotBusy));
+        }
+    }
+
+    public bool IsNotBusy => !IsBusy;
+
+    public string StatusMessage
+    {
+        get => _statusMessage;
+        set
+        {
+            if (_statusMessage == value)
+            {
+                return;
+            }
+
+            _statusMessage = value;
+            OnPropertyChanged();
+        }
+    }
+
     public event PropertyChangedEventHandler? PropertyChanged;
 
     public MainWindow()
@@ -113,7 +151,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         }
     }
 
-    private void MergeAndSave_Click(object sender, RoutedEventArgs e)
+    private async void MergeAndSave_Click(object sender, RoutedEventArgs e)
     {
         if (SelectedFiles.Count == 0)
         {
@@ -145,15 +183,38 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
         try
         {
-            MergeFiles(saveDialog.FileName, SelectedFiles);
+            IsBusy = true;
+            StatusMessage = "Procesando...";
+            _cancellationTokenSource = new CancellationTokenSource();
+            var files = SelectedFiles.ToList();
+            var keywords = Keywords.ToList();
+            var options = new ProcessingOptions(AdvancedEnabled, AdvancedMode, IgnoreCase, keywords);
+            await ProcessFilesAsync(saveDialog.FileName, files, options, _cancellationTokenSource.Token);
             MessageBox.Show("Archivos unidos correctamente.", "UnidorExacto",
                 MessageBoxButton.OK, MessageBoxImage.Information);
             SelectedFiles.Clear();
+        }
+        catch (OperationCanceledException)
+        {
+            MessageBox.Show("Operación cancelada.", "UnidorExacto",
+                MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (IOException ex)
         {
             MessageBox.Show($"Error al unir archivos: {ex.Message}", "UnidorExacto",
                 MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Error al unir archivos: {ex.Message}", "UnidorExacto",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            _cancellationTokenSource?.Dispose();
+            _cancellationTokenSource = null;
+            IsBusy = false;
+            StatusMessage = string.Empty;
         }
     }
 
@@ -192,57 +253,72 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         }
     }
 
-    private void MergeFiles(string destinationPath, IReadOnlyList<string> files)
+    private void CancelProcessing_Click(object sender, RoutedEventArgs e)
     {
-        var allLines = new List<string>();
+        _cancellationTokenSource?.Cancel();
+    }
+
+    private Task ProcessFilesAsync(string destinationPath, IReadOnlyList<string> files, ProcessingOptions options, CancellationToken cancellationToken)
+    {
+        return Task.Run(() => ProcessFiles(destinationPath, files, options, cancellationToken), cancellationToken);
+    }
+
+    private void ProcessFiles(string destinationPath, IReadOnlyList<string> files, ProcessingOptions options, CancellationToken cancellationToken)
+    {
         var treatAsCsv = files.All(file => string.Equals(Path.GetExtension(file), ".csv", StringComparison.OrdinalIgnoreCase));
+        var comparison = options.IgnoreCase ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
         string? header = null;
+
+        using var writer = new StreamWriter(destinationPath, false);
 
         foreach (var file in files)
         {
-            var lines = File.ReadAllLines(file);
-            if (lines.Length == 0)
-            {
-                continue;
-            }
+            cancellationToken.ThrowIfCancellationRequested();
+            var isFirstLine = true;
 
-            var startIndex = 0;
-            if (treatAsCsv)
+            foreach (var line in File.ReadLines(file))
             {
-                if (header == null)
+                cancellationToken.ThrowIfCancellationRequested();
+
+                if (treatAsCsv && isFirstLine)
                 {
-                    header = lines[0];
-                    allLines.Add(header);
+                    if (header == null)
+                    {
+                        header = line;
+                        writer.WriteLine(header);
+                    }
+
+                    isFirstLine = false;
+                    continue;
                 }
 
-                startIndex = 1;
-            }
+                isFirstLine = false;
 
-            for (var index = startIndex; index < lines.Length; index++)
-            {
-                var line = lines[index];
-                if (ShouldKeepLine(line))
+                if (ShouldKeepLine(line, options, comparison))
                 {
-                    allLines.Add(line);
+                    writer.WriteLine(line);
                 }
             }
         }
-
-        File.WriteAllLines(destinationPath, allLines);
     }
 
-    private bool ShouldKeepLine(string line)
+    private static bool ShouldKeepLine(string line, ProcessingOptions options, StringComparison comparison)
     {
-        if (!AdvancedEnabled)
+        if (!options.AdvancedEnabled)
         {
             return true;
         }
 
-        var comparison = IgnoreCase ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
-        var containsKeyword = Keywords.Any(keyword => line.Contains(keyword, comparison));
+        var containsKeyword = options.Keywords.Any(keyword => line.Contains(keyword, comparison));
 
-        return AdvancedMode == AdvancedFilterMode.Filter ? containsKeyword : !containsKeyword;
+        return options.AdvancedMode == AdvancedFilterMode.Filter ? containsKeyword : !containsKeyword;
     }
+
+    private sealed record ProcessingOptions(
+        bool AdvancedEnabled,
+        AdvancedFilterMode AdvancedMode,
+        bool IgnoreCase,
+        IReadOnlyList<string> Keywords);
 
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
     {
