@@ -25,6 +25,10 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private bool _advancedEnabled;
     private AdvancedFilterMode _advancedMode = AdvancedFilterMode.Filter;
     private bool _ignoreCase = true;
+    private bool _transformStripSite;
+    private bool _transformTrimWhitespace;
+    private bool _transformRemoveEmptyLines;
+    private bool _transformNormalizeSeparators;
     private string _keywordInput = string.Empty;
     private bool _isBusy;
     private string _statusMessage = string.Empty;
@@ -71,6 +75,66 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             }
 
             _ignoreCase = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public bool TransformStripSite
+    {
+        get => _transformStripSite;
+        set
+        {
+            if (_transformStripSite == value)
+            {
+                return;
+            }
+
+            _transformStripSite = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public bool TransformTrimWhitespace
+    {
+        get => _transformTrimWhitespace;
+        set
+        {
+            if (_transformTrimWhitespace == value)
+            {
+                return;
+            }
+
+            _transformTrimWhitespace = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public bool TransformRemoveEmptyLines
+    {
+        get => _transformRemoveEmptyLines;
+        set
+        {
+            if (_transformRemoveEmptyLines == value)
+            {
+                return;
+            }
+
+            _transformRemoveEmptyLines = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public bool TransformNormalizeSeparators
+    {
+        get => _transformNormalizeSeparators;
+        set
+        {
+            if (_transformNormalizeSeparators == value)
+            {
+                return;
+            }
+
+            _transformNormalizeSeparators = value;
             OnPropertyChanged();
         }
     }
@@ -188,7 +252,15 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             _cancellationTokenSource = new CancellationTokenSource();
             var files = SelectedFiles.ToList();
             var keywords = Keywords.ToList();
-            var options = new ProcessingOptions(AdvancedEnabled, AdvancedMode, IgnoreCase, keywords);
+            var options = new ProcessingOptions(
+                AdvancedEnabled,
+                AdvancedMode,
+                IgnoreCase,
+                keywords,
+                TransformStripSite,
+                TransformTrimWhitespace,
+                TransformRemoveEmptyLines,
+                TransformNormalizeSeparators);
             await ProcessFilesAsync(saveDialog.FileName, files, options, _cancellationTokenSource.Token);
             MessageBox.Show("Archivos unidos correctamente.", "UnidorExacto",
                 MessageBoxButton.OK, MessageBoxImage.Information);
@@ -271,33 +343,78 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
         using var writer = new StreamWriter(destinationPath, false);
 
-        foreach (var file in files)
+        foreach (var line in ApplyTransformations(EnumerateFilteredLines()))
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var isFirstLine = true;
+            writer.WriteLine(line);
+        }
 
-            foreach (var line in File.ReadLines(file))
+        IEnumerable<string> EnumerateFilteredLines()
+        {
+            foreach (var file in files)
             {
                 cancellationToken.ThrowIfCancellationRequested();
+                var isFirstLine = true;
 
-                if (treatAsCsv && isFirstLine)
+                foreach (var line in File.ReadLines(file))
                 {
-                    if (header == null)
+                    cancellationToken.ThrowIfCancellationRequested();
+
+                    if (treatAsCsv && isFirstLine)
                     {
-                        header = line;
-                        writer.WriteLine(header);
+                        if (header == null)
+                        {
+                            header = line;
+                            yield return header;
+                        }
+
+                        isFirstLine = false;
+                        continue;
                     }
 
                     isFirstLine = false;
+
+                    if (ShouldKeepLine(line, options, comparison))
+                    {
+                        yield return line;
+                    }
+                }
+            }
+        }
+
+        IEnumerable<string> ApplyTransformations(IEnumerable<string> lines)
+        {
+            foreach (var rawLine in lines)
+            {
+                var line = rawLine ?? string.Empty;
+
+                if (options.TransformNormalizeSeparators)
+                {
+                    line = line.Replace('|', ':')
+                        .Replace(';', ':')
+                        .Replace(',', ':');
+                }
+
+                if (options.TransformTrimWhitespace)
+                {
+                    line = line.Trim();
+                }
+
+                if (options.TransformStripSite)
+                {
+                    var firstColonIndex = line.IndexOf(':');
+                    if (firstColonIndex >= 0 && line.IndexOf(':', firstColonIndex + 1) >= 0)
+                    {
+                        line = line[(firstColonIndex + 1)..];
+                    }
+                }
+
+                if (options.TransformRemoveEmptyLines && line.Length == 0)
+                {
                     continue;
                 }
 
-                isFirstLine = false;
-
-                if (ShouldKeepLine(line, options, comparison))
-                {
-                    writer.WriteLine(line);
-                }
+                yield return line;
             }
         }
     }
@@ -318,7 +435,11 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         bool AdvancedEnabled,
         AdvancedFilterMode AdvancedMode,
         bool IgnoreCase,
-        IReadOnlyList<string> Keywords);
+        IReadOnlyList<string> Keywords,
+        bool TransformStripSite,
+        bool TransformTrimWhitespace,
+        bool TransformRemoveEmptyLines,
+        bool TransformNormalizeSeparators);
 
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
     {

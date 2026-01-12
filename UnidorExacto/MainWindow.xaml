@@ -76,6 +76,23 @@
                     <CheckBox Content="Ignorar mayúsculas"
                               Margin="0,8,0,0"
                               IsChecked="{Binding IgnoreCase}" />
+
+                    <GroupBox Header="Transformaciones"
+                              Margin="0,12,0,0">
+                        <StackPanel Margin="8,6,8,8">
+                            <CheckBox Content="Quitar sitio (site:correo:pass → correo:pass)"
+                                      IsChecked="{Binding TransformStripSite}" />
+                            <CheckBox Content="Quitar espacios (trim)"
+                                      Margin="0,6,0,0"
+                                      IsChecked="{Binding TransformTrimWhitespace}" />
+                            <CheckBox Content="Eliminar líneas vacías"
+                                      Margin="0,6,0,0"
+                                      IsChecked="{Binding TransformRemoveEmptyLines}" />
+                            <CheckBox Content="Normalizar separadores (| ; , → :)"
+                                      Margin="0,6,0,0"
+                                      IsChecked="{Binding TransformNormalizeSeparators}" />
+                        </StackPanel>
+                    </GroupBox>
                 </StackPanel>
             </StackPanel>
         </GroupBox>
