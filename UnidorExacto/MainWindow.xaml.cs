@@ -294,30 +294,12 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
                 isFirstLine = false;
 
-                var processedLine = ProcessLine(line);
-                if (ShouldKeepLine(processedLine, options, comparison))
+                if (ShouldKeepLine(line, options, comparison))
                 {
-                    writer.WriteLine(processedLine);
+                    writer.WriteLine(line);
                 }
             }
         }
-    }
-
-    private static string ProcessLine(string line)
-    {
-        var firstColonIndex = line.IndexOf(':');
-        if (firstColonIndex < 0)
-        {
-            return line;
-        }
-
-        var secondColonIndex = line.IndexOf(':', firstColonIndex + 1);
-        if (secondColonIndex < 0)
-        {
-            return line;
-        }
-
-        return line[(firstColonIndex + 1)..];
     }
 
     private static bool ShouldKeepLine(string line, ProcessingOptions options, StringComparison comparison)
