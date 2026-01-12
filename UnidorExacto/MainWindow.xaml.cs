@@ -395,11 +395,12 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
                 if (options.TransformStripSite)
                 {
-                    var firstColonIndex = line.IndexOf(':');
-                    if (firstColonIndex >= 0 && line.IndexOf(':', firstColonIndex + 1) >= 0)
+                    if (!TryExtractCredential(line, out var extractedCredential))
                     {
-                        line = line[(firstColonIndex + 1)..];
+                        continue;
                     }
+
+                    line = extractedCredential;
                 }
 
                 if (options.AdvancedEnabled && keywords.Length > 0)
@@ -454,6 +455,105 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         bool TransformTrimWhitespace,
         bool TransformRemoveEmptyLines,
         bool TransformNormalizeSeparators);
+
+    private static bool TryExtractCredential(string line, out string credential)
+    {
+        credential = string.Empty;
+        if (string.IsNullOrWhiteSpace(line))
+        {
+            return false;
+        }
+
+        var parts = line.Split(':');
+        if (parts.Length < 2)
+        {
+            return false;
+        }
+
+        for (var index = parts.Length - 2; index >= 0; index--)
+        {
+            var user = parts[index].Trim();
+            var pass = parts[index + 1].Trim();
+
+            if (!IsLikelyCredential(user, pass))
+            {
+                continue;
+            }
+
+            credential = $"{user}:{pass}";
+            return true;
+        }
+
+        return false;
+    }
+
+    private static bool IsLikelyCredential(string user, string pass)
+    {
+        if (string.IsNullOrWhiteSpace(user) || string.IsNullOrWhiteSpace(pass))
+        {
+            return false;
+        }
+
+        if (user.Any(char.IsWhiteSpace) || pass.Any(char.IsWhiteSpace))
+        {
+            return false;
+        }
+
+        if (user.Contains('/') || user.Contains('\\') || pass.Contains('/') || pass.Contains('\\'))
+        {
+            return false;
+        }
+
+        if (IsLikelyEmail(user))
+        {
+            return pass.Length >= 2;
+        }
+
+        return IsLikelyUsername(user) && pass.Length >= 2;
+    }
+
+    private static bool IsLikelyEmail(string value)
+    {
+        var atIndex = value.IndexOf('@');
+        if (atIndex <= 0 || atIndex == value.Length - 1)
+        {
+            return false;
+        }
+
+        var dotIndex = value.IndexOf('.', atIndex + 1);
+        if (dotIndex <= atIndex + 1 || dotIndex >= value.Length - 1)
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    private static bool IsLikelyUsername(string value)
+    {
+        if (value.Length < 3)
+        {
+            return false;
+        }
+
+        if (value.Contains('/') || value.Contains('\\'))
+        {
+            return false;
+        }
+
+        var lower = value.ToLowerInvariant();
+        if (lower.StartsWith("http") || lower.StartsWith("www."))
+        {
+            return false;
+        }
+
+        if (lower.Contains(".com/") || lower.Contains(".net/") || lower.Contains(".org/"))
+        {
+            return false;
+        }
+
+        return true;
+    }
 
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
     {
