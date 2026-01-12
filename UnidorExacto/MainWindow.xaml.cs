@@ -248,32 +248,34 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         try
         {
             IsBusy = true;
-            StatusMessage = "Procesando...";
+            StatusMessage = "Preparando...";
             _cancellationTokenSource = new CancellationTokenSource();
-            var files = SelectedFiles.ToList();
-            var keywords = Keywords.ToList();
-            var options = new ProcessingOptions(
-                AdvancedEnabled,
-                AdvancedMode,
-                IgnoreCase,
-                keywords,
-                TransformStripSite,
-                TransformTrimWhitespace,
-                TransformRemoveEmptyLines,
-                TransformNormalizeSeparators);
-            await ProcessFilesAsync(saveDialog.FileName, files, options, _cancellationTokenSource.Token);
+            var progress = new Progress<ProgressInfo>(info =>
+            {
+                StatusMessage =
+                    $"Procesando archivo {info.CurrentFileIndex}/{info.TotalFiles}. " +
+                    $"Líneas leídas: {info.LinesRead:N0}. " +
+                    $"Líneas escritas: {info.LinesWritten:N0}.";
+            });
+            await MergeAndSaveAsync(saveDialog.FileName, _cancellationTokenSource.Token, progress);
             MessageBox.Show("Archivos unidos correctamente.", "UnidorExacto",
                 MessageBoxButton.OK, MessageBoxImage.Information);
             SelectedFiles.Clear();
         }
         catch (OperationCanceledException)
         {
-            MessageBox.Show("Operación cancelada.", "UnidorExacto",
+            StatusMessage = "Cancelado.";
+            MessageBox.Show("Cancelado.", "UnidorExacto",
                 MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (IOException ex)
         {
             MessageBox.Show($"Error al unir archivos: {ex.Message}", "UnidorExacto",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            MessageBox.Show($"Acceso denegado: {ex.Message}", "UnidorExacto",
                 MessageBoxButton.OK, MessageBoxImage.Error);
         }
         catch (Exception ex)
@@ -330,63 +332,54 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         _cancellationTokenSource?.Cancel();
     }
 
-    private Task ProcessFilesAsync(string destinationPath, IReadOnlyList<string> files, ProcessingOptions options, CancellationToken cancellationToken)
+    private Task MergeAndSaveAsync(string outputPath, CancellationToken ct, IProgress<ProgressInfo> progress)
     {
-        return Task.Run(() => ProcessFiles(destinationPath, files, options, cancellationToken), cancellationToken);
+        var files = SelectedFiles.ToList();
+        var options = new ProcessingOptions(
+            AdvancedEnabled,
+            AdvancedMode,
+            IgnoreCase,
+            Keywords.ToList(),
+            TransformStripSite,
+            TransformTrimWhitespace,
+            TransformRemoveEmptyLines,
+            TransformNormalizeSeparators);
+
+        return Task.Run(() => MergeAndSave(outputPath, files, options, ct, progress), ct);
     }
 
-    private void ProcessFiles(string destinationPath, IReadOnlyList<string> files, ProcessingOptions options, CancellationToken cancellationToken)
+    private void MergeAndSave(string outputPath, IReadOnlyList<string> files, ProcessingOptions options, CancellationToken ct,
+        IProgress<ProgressInfo> progress)
     {
-        var treatAsCsv = files.All(file => string.Equals(Path.GetExtension(file), ".csv", StringComparison.OrdinalIgnoreCase));
         var comparison = options.IgnoreCase ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
-        string? header = null;
+        var keywords = options.Keywords
+            .Select(keyword => keyword.Trim())
+            .Where(keyword => !string.IsNullOrWhiteSpace(keyword))
+            .Distinct(options.IgnoreCase ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal)
+            .ToArray();
+        var totalFiles = files.Count;
+        var linesRead = 0L;
+        var linesWritten = 0L;
+        const int progressInterval = 5000;
 
-        using var writer = new StreamWriter(destinationPath, false);
+        using var outFs = new FileStream(outputPath, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 1024 * 1024,
+            useAsync: false);
+        using var writer = new StreamWriter(outFs);
 
-        foreach (var line in ApplyTransformations(EnumerateFilteredLines()))
+        for (var fileIndex = 0; fileIndex < totalFiles; fileIndex++)
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            writer.WriteLine(line);
-        }
+            ct.ThrowIfCancellationRequested();
+            progress.Report(new ProgressInfo(fileIndex + 1, totalFiles, linesRead, linesWritten));
 
-        IEnumerable<string> EnumerateFilteredLines()
-        {
-            foreach (var file in files)
+            using var fs = new FileStream(files[fileIndex], FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 1024 * 1024,
+                useAsync: false);
+            using var reader = new StreamReader(fs, detectEncodingFromByteOrderMarks: true);
+
+            string? line;
+            while ((line = reader.ReadLine()) != null)
             {
-                cancellationToken.ThrowIfCancellationRequested();
-                var isFirstLine = true;
-
-                foreach (var line in File.ReadLines(file))
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-
-                    if (treatAsCsv && isFirstLine)
-                    {
-                        if (header == null)
-                        {
-                            header = line;
-                            yield return header;
-                        }
-
-                        isFirstLine = false;
-                        continue;
-                    }
-
-                    isFirstLine = false;
-
-                    if (ShouldKeepLine(line, options, comparison))
-                    {
-                        yield return line;
-                    }
-                }
-            }
-        }
-
-        IEnumerable<string> ApplyTransformations(IEnumerable<string> lines)
-        {
-            foreach (var rawLine in lines)
-            {
-                var line = rawLine ?? string.Empty;
+                ct.ThrowIfCancellationRequested();
+                linesRead++;
 
                 if (options.TransformNormalizeSeparators)
                 {
@@ -409,26 +402,47 @@ public partial class MainWindow : Window, INotifyPropertyChanged
                     }
                 }
 
+                if (options.AdvancedEnabled && keywords.Length > 0)
+                {
+                    var containsKeyword = keywords.Any(keyword => line.Contains(keyword, comparison));
+                    if (options.AdvancedMode == AdvancedFilterMode.Filter ? !containsKeyword : containsKeyword)
+                    {
+                        continue;
+                    }
+                }
+
                 if (options.TransformRemoveEmptyLines && line.Length == 0)
                 {
                     continue;
                 }
 
-                yield return line;
+                writer.WriteLine(line);
+                linesWritten++;
+
+                if (linesRead % progressInterval == 0)
+                {
+                    progress.Report(new ProgressInfo(fileIndex + 1, totalFiles, linesRead, linesWritten));
+                }
             }
         }
+
+        progress.Report(new ProgressInfo(totalFiles, totalFiles, linesRead, linesWritten));
     }
 
-    private static bool ShouldKeepLine(string line, ProcessingOptions options, StringComparison comparison)
+    public sealed class ProgressInfo
     {
-        if (!options.AdvancedEnabled)
+        public ProgressInfo(int currentFileIndex, int totalFiles, long linesRead, long linesWritten)
         {
-            return true;
+            CurrentFileIndex = currentFileIndex;
+            TotalFiles = totalFiles;
+            LinesRead = linesRead;
+            LinesWritten = linesWritten;
         }
 
-        var containsKeyword = options.Keywords.Any(keyword => line.Contains(keyword, comparison));
-
-        return options.AdvancedMode == AdvancedFilterMode.Filter ? containsKeyword : !containsKeyword;
+        public int CurrentFileIndex { get; }
+        public int TotalFiles { get; }
+        public long LinesRead { get; }
+        public long LinesWritten { get; }
     }
 
     private sealed record ProcessingOptions(
